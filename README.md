@@ -1,24 +1,7 @@
-# Personal Cloud App (MVP)
+# Tauri + React + Typescript
 
-## 1. Overview
-A cross-platform desktop personal cloud application for anything.
-**Stack:** Tauri (Rust), React (UI), FastAPI (Backend Sidecar).
+This template should help get you started developing with Tauri, React and Typescript in Vite.
 
-## 2. MVP Goals
-- [ ] Hello World Window
-- [ ] Google Login (OAuth 2.0)
-- [ ] List files from Google Drive
+## Recommended IDE Setup
 
-## 3. Roadmap
-- **v1.0:** MVP (Read-only Drive access)
-- **v1.1:** File Upload/Download
-- **v2.0:** MFA with SMS Login
-- **v3.0:** Image Processing features
-
-## 4. Architecture
-- **Frontend:** React + Vite
-- **Core:** Tauri (Rust)
-- **Backend:** Python FastAPI (Sidecar)
-
-## 5. Setup Instructions
-See \`docs/development/setup.md\` for details.
+- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
