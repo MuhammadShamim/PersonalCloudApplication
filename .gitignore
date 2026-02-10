@@ -22,3 +22,20 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+
+# Environment variables
+.env
+
+# Log files
+*.log
+
+# Build artifacts
+build/
+
+# MacOS specific files
+.DS_Store
