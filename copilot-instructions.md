@@ -1,33 +1,25 @@
 # PersonalCloudApplication - AI Coding Instructions
 
 ## Project Overview
-This is a cross-platform desktop application designed for personal file management.
-- **Name:** PersonalCloudApplication
-- **Goal:** Manage files locally and on cloud providers (MVP: Google Drive).
+A cross-platform desktop app using Tauri v2, React, and a Python FastAPI sidecar.
 
-## Tech Stack & Architecture
-1.  **Core:** Tauri (Rust) - Handles windowing, OS interaction, and bundles the sidecar.
-2.  **Frontend:** React (Vite) + TypeScript + Tailwind CSS - The user interface.
-3.  **Backend (Sidecar):** Python FastAPI - Handles business logic, OAuth, and API integrations.
+## Tech Stack
+- **Core:** Tauri v2 (Rust)
+- **Frontend:** React + TypeScript + Vite
+- **Backend:** Python FastAPI (Sidecar pattern)
 
-## Coding Standards
+## Critical Implementation Details
 
-### General
-- Write modular, clean code.
-- Add comments to complex logic.
-- adhere to MVP scope: Hello World -> Google Login -> Drive List.
+### 1. Python Sidecar (FastAPI)
+- **CORS is Mandatory:** Always add \`CORSMiddleware\` allowing \`*\` origins. Tauri's webview is considered a different origin from localhost.
+- **Output Buffering:** Always use \`print("...", flush=True)\`. Without \`flush=True\`, Python buffers output and the Frontend cannot detect when the server is ready.
+- **Entry Point:** The script must use \`if __name__ == "__main__":\` to run \`uvicorn.run()\`.
 
-### Frontend (React)
-- Use Functional Components with Hooks.
-- Use strict TypeScript typing.
-- Communicate with the Backend via HTTP requests to localhost (the Python sidecar).
+### 2. Tauri v2 Security
+- **Capabilities:** Permissions are NOT in \`tauri.conf.json\`. They are in \`src-tauri/capabilities/\`.
+- **Shell Plugin:** Use \`@tauri-apps/plugin-shell\` for spawning processes.
+- **Spawn vs Execute:** We use \`spawn()\` for long-running servers. Ensure \`shell:allow-spawn\` is granted in capabilities.
 
-### Backend (Python)
-- Use FastAPI for the server.
-- Follow PEP 8 style guidelines.
-- Use strict type hinting.
-- "Sidecar" pattern: This server runs as a child process of the Tauri app.
-
-### Tauri (Rust)
-- Only use Rust for system-level commands or spawning the sidecar.
-- Keep the `tauri.conf.json` allowlist minimal for security.
+### 3. Frontend (React)
+- **Readiness Check:** When spawning the sidecar, listen to both \`stdout\` and \`stderr\`. Uvicorn prints startup logs to \`stderr\`.
+- **Port:** The Python backend defaults to port \`8000\`.

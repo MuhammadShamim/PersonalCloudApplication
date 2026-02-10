@@ -1,50 +1,95 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import { invoke } from "@tauri-apps/api/core";
+import { useState, useEffect, useRef } from "react";
+import { Command } from "@tauri-apps/plugin-shell";
 import "./App.css";
 
 function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
+  const [message, setMessage] = useState("Waiting for backend...");
+  const [logs, setLogs] = useState<string[]>([]);
+  const [backendReady, setBackendReady] = useState(false);
+  
+  // Use a ref to ensure we only spawn the sidecar ONCE
+  const sidecarSpawned = useRef(false);
 
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke("greet", { name }));
-  }
+  useEffect(() => {
+    // If we already spawned it, don't do it again
+    if (sidecarSpawned.current) return;
+    sidecarSpawned.current = true;
+
+    const startSidecar = async () => {
+      try {
+        const sidecar = Command.sidecar("bin/api");
+        const child = await sidecar.spawn();
+        console.log("Sidecar spawned with PID:", child.pid);
+        
+        // Helper to check lines for success message
+        const checkReady = (line: string) => {
+          if (line.includes("Application startup complete")) {
+            setBackendReady(true);
+            setMessage("Backend is Ready!");
+          }
+        };
+
+        // Listen to stdout
+        sidecar.stdout.on("data", (line) => {
+          setLogs((prev) => [...prev, `[OUT]: ${line}`]);
+          checkReady(line);
+        });
+
+        // Listen to stderr (Uvicorn often prints here by default)
+        sidecar.stderr.on("data", (line) => {
+          console.log(`[PY-ERR]: ${line}`); 
+          setLogs((prev) => [...prev, `[ERR]: ${line}`]);
+          checkReady(line); // <--- Added this check here!
+        });
+
+      } catch (error) {
+        console.error("Failed to spawn sidecar:", error);
+        setMessage("Failed to start backend.");
+        setLogs((prev) => [...prev, `[ERR-SPAWN]: ${error}`]);
+      }
+    };
+
+    startSidecar();
+  }, []);
+
+  const pingBackend = async () => {
+    try {
+      const response = await fetch("http://127.0.0.1:8000/");
+      const data = await response.json();
+      setMessage(`Response: ${data.message}`);
+    } catch (e) {
+      setMessage(`Error fetching data: ${e}`);
+    }
+  };
 
   return (
-    <main className="container">
-      <h1>Welcome to Tauri + React</h1>
-
-      <div className="row">
-        <a href="https://vite.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+    <div className="container">
+      <h1>Personal Cloud App</h1>
+      
+      <div className="card">
+        <p>Status: <strong>{message}</strong></p>
+        
+        <button onClick={pingBackend} disabled={!backendReady}>
+          Ping Python Backend
+        </button>
       </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
 
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
-        }}
-      >
-        <input
-          id="greet-input"
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
-        />
-        <button type="submit">Greet</button>
-      </form>
-      <p>{greetMsg}</p>
-    </main>
+      <div className="logs">
+        <h3>Backend Logs:</h3>
+        <div style={{ 
+          textAlign: 'left', 
+          background: '#f4f4f4', 
+          padding: '10px', 
+          borderRadius: '5px',
+          fontFamily: 'monospace',
+          maxHeight: '200px',
+          overflowY: 'auto',
+          color: '#333'
+        }}>
+          {logs.map((log, i) => <div key={i}>{log}</div>)}
+        </div>
+      </div>
+    </div>
   );
 }
 

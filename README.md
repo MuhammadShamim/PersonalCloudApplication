@@ -1,30 +1,50 @@
 # PersonalCloudApplication
-
+![Personal Cloud Application](./docs/screenshots/PCA.png)
 ## 1. Overview
 A cross-platform desktop application for personal file management.
 - **Goal:** Manage files locally and on cloud providers (MVP: Google Drive).
-- **Architecture:** Tauri (Rust Core) + React (UI) + FastAPI (Python Sidecar).
+- **Current Status:** MVP Phase (Hello World + Python Sidecar running).
 
-## 2. Tech Stack
-- **Frontend:** React, TypeScript, Vite, Tailwind CSS
-- **Core:** Tauri (Rust)
-- **Backend:** Python FastAPI (bundled as a sidecar)
-- **Database:** SQLite (planned for metadata)
+## 2. Architecture
+- **Frontend:** React + TypeScript (User Interface)
+- **Core:** Tauri v2 (Windowing & System Security)
+- **Backend:** Python FastAPI (Bundled Sidecar for Logic/API)
 
 ## 3. Developer Setup
-See \`docs/development/setup.md\` for detailed installation steps.
 
-### Quick Start
-1. **Install Dependencies:**
+### Prerequisites
+- Node.js & npm
+- Rust (Cargo)
+- Python 3.10+
+
+### Installation
+1. **Install Frontend Dependencies:**
    \`\`\`bash
    npm install
-   cd python-backend && python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt
+   \`\`\`
+2. **Setup Backend:**
+   \`\`\`bash
+   cd python-backend
+   python3 -m venv venv
+   source venv/bin/activate
+   pip install -r requirements.txt
    \`\`\`
 
-2. **Run Development Mode:**
+### Running the App
+1. **Build the Sidecar (REQUIRED):**
+   You must compile the Python backend before running the app.
+   \`\`\`bash
+   # In python-backend/
+   pyinstaller --clean --onefile --name api main.py
+   mv dist/api ../src-tauri/bin/api-aarch64-apple-darwin
+   # (Adjust suffix for your OS)
+   \`\`\`
+
+2. **Run Tauri:**
    \`\`\`bash
    npm run tauri dev
    \`\`\`
 
-## 4. Architecture Notes
-This app uses the **Sidecar Pattern**. The Python backend is compiled into a binary and bundled with the Tauri application. It runs as a subprocess to handle heavy logic and API authentication.
+## 4. Troubleshooting
+- **"Waiting for backend...":** The Python binary might not be executable. Run \`chmod +x src-tauri/bin/*\`.
+- **"Address already in use":** An old version of the backend is still running. Run \`killall api\`.
