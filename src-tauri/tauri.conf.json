@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "personal-cloud-application",
+        "title": "Personal Cloud App",
         "width": 800,
         "height": 600
       }
@@ -30,6 +30,9 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
+    ],
+    "externalBin": [
+      "bin/api"
     ]
   }
 }
