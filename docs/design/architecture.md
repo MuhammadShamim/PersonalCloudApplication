@@ -94,3 +94,52 @@ Our architecture is "Polyglot," meaning it uses specific languages for specific 
 - **Role:** Business Logic & Integrations.
 - **Why:** Python has the world's best libraries for Data Science, AI, and Cloud APIs (Google Drive).
 - **Justification:** Writing complex Google API OAuth logic or image processing in Rust is difficult and slow. In Python, it is effortless. We trade a small amount of startup speed for massive development speed.
+
+## 6. Security Architecture (The "Secure Handshake")
+
+To prevent unauthorized access to the local backend (e.g., from malicious browser extensions or malware), we implement a **Shared Secret Authentication** protocol.
+
+### The Problem
+By default, \`localhost:8000\` is open to any process on the machine. A malicious script could theoretically send commands to delete files if it guessed the port.
+
+### The Solution: Ephemeral Bearer Tokens
+We use a "Defense in Depth" strategy where the Rust Core acts as the Source of Truth for security.
+
+### Protocol Flow
+1.  **Generation:** On app launch, Rust generates a cryptographically secure random 32-char string (\`API_SECRET_TOKEN\`).
+2.  **Injection:** React asks Rust for this token via \`invoke('get_api_token')\`.
+3.  **Spawn:** React spawns the Python Sidecar, passing the token as a **private environment variable**.
+4.  **Enforcement:** Python's FastAPI middleware rejects *any* request that does not include the header \`Authorization: Bearer <TOKEN>\`.
+
+### Security Sequence Diagram
+```mermaid
+sequenceDiagram
+    participant Rust as Tauri Core
+    participant React as Frontend (UI)
+    participant Python as Sidecar (API)
+
+    Note over Rust: App Launch
+    Rust->>Rust: Generate Random Token (e.g. "aB3...")
+    
+    React->>Rust: invoke("get_api_token")
+    Rust-->>React: Returns "aB3..."
+    
+    React->>React: Store Token in Memory (APIClient)
+    
+    Note over React: Spawning Sidecar
+    React->>Python: Spawn Process (env: API_SECRET_TOKEN="aB3...")
+    
+    Note over Python: Server Start
+    Python->>Python: Load Token from Env
+    Python->>Python: Enable Auth Middleware
+    
+    Note over React: Runtime
+    React->>Python: GET /files (Header: Authorization: Bearer aB3...)
+    Python->>Python: Verify Token == Env Token
+    Python-->>React: 200 OK (Data)
+    
+    Note over React: Attack Attempt
+    React->>Python: GET /files (No Header)
+    Python-->>React: 403 Forbidden
+```
+EOF

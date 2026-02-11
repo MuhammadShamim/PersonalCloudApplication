@@ -1,38 +1,60 @@
 import { useState, useEffect, useRef } from "react";
 import { Command } from "@tauri-apps/plugin-shell";
 import { invoke } from "@tauri-apps/api/core";
-import { api } from "./api/client"; // <--- Import the new client
+import { api } from "./api/client";
 import "./App.css";
 
 function App() {
-  const [message, setMessage] = useState("Initializing backend...");
+  const [message, setMessage] = useState("Initializing Secure Backend...");
   const [logs, setLogs] = useState<string[]>([]);
   const [backendReady, setBackendReady] = useState(false);
   
+  // Ref to ensure we only spawn once
   const sidecarSpawned = useRef(false);
 
   useEffect(() => {
     if (sidecarSpawned.current) return;
     sidecarSpawned.current = true;
 
-    const startSidecar = async () => {
+    const initSecureBackend = async () => {
       try {
-        const sidecar = Command.sidecar("bin/api");
-        const child = await sidecar.spawn();
-        console.log("Sidecar spawned PID:", child.pid);
+        // 1. Get the Secret Token from Rust (Generated at launch)
+        const token = await invoke<string>("get_api_token");
         
+        if (!token) {
+            throw new Error("Failed to acquire security token from Rust.");
+        }
+        
+        // 2. Configure our API Client with this token
+        api.setToken(token);
+        setLogs(prev => [...prev, `[SEC]: Acquired Token: ${token.substring(0, 5)}...`]);
+
+        // 3. Spawn Sidecar with Token in Environment
+        // "bin/api" matches tauri.conf.json > externalBin
+        const sidecar = Command.sidecar("bin/api", [], {
+            env: { API_SECRET_TOKEN: token } 
+        });
+
+        const child = await sidecar.spawn();
+        console.log("Sidecar spawned with PID:", child.pid);
+        
+        // Helper to check for success signal
         const checkReady = (line: string) => {
           if (line.includes("Application startup complete")) {
             setBackendReady(true);
-            setMessage("Backend is Ready!");
+            setMessage("Backend is Ready & Secure!");
             
+            // Close splash screen after brief delay
             console.log("Backend ready. Closing splash screen...");
-            invoke("close_splashscreen").catch((err) => 
-              console.error("Failed to invoke close_splashscreen:", err)
-            );
+            setTimeout(() => {
+                invoke("close_splashscreen").catch((err) => 
+                  console.error("Failed to invoke close_splashscreen:", err)
+                );
+            }, 500);
           }
         };
 
+        // Listen to logs
         sidecar.stdout.on("data", (line) => {
           setLogs((prev) => [...prev, `[OUT]: ${line}`]);
           checkReady(line);
@@ -46,23 +68,21 @@ function App() {
 
       } catch (error) {
         console.error("Failed to spawn sidecar:", error);
-        setMessage("Failed to start backend.");
+        setMessage("Security Check Failed.");
         setLogs((prev) => [...prev, `[CRITICAL]: ${error}`]);
       }
     };
 
-    startSidecar();
+    initSecureBackend();
   }, []);
 
-  // --- NEW: Clean API Call ---
   const pingBackend = async () => {
     try {
-      setMessage("Pinging...");
-      // No more fetch("http://...")! Just a method call.
+      setMessage("Verifying Security Handshake...");
       const data = await api.healthCheck();
-      setMessage(`Response: ${data.message}`);
+      setMessage(`Success: ${data.message}`);
     } catch (e) {
-      setMessage(`Error: ${e}`);
+      setMessage(`Security Error: ${e}`);
     }
   };
 
@@ -74,12 +94,12 @@ function App() {
         <p>Status: <strong>{message}</strong></p>
         
         <button onClick={pingBackend} disabled={!backendReady}>
-          Ping Python Backend
+          Verify Secure Connection
         </button>
       </div>
 
       <div className="logs">
-        <h3>Backend Logs:</h3>
+        <h3>Secure Logs:</h3>
         <div className="log-box">
           {logs.map((log, i) => <div key={i}>{log}</div>)}
         </div>
