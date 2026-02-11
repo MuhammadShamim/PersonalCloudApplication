@@ -68,7 +68,8 @@ function App() {
   const pingBackend = async () => {
     try {
       const data = await api.healthCheck();
-      setMessage(`Response: ${data.message}`);
+      // UPDATE THIS LINE:
+      setMessage(`Response: ${data.system} is ${data.status} on Port ${data.port}`);
     } catch (e) {
       setMessage(`Error: ${e}`);
     }

@@ -16,7 +16,9 @@ export interface BackendResponse<T> {
 }
 
 export interface HealthCheck {
-    message: string;
+    status: string;
+    system: string;
+    port: number;
 }
 
 export interface GoogleAuthURL {
