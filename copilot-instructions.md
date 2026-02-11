@@ -1,25 +1,38 @@
 # PersonalCloudApplication - AI Coding Instructions
 
 ## Project Overview
-A cross-platform desktop app using Tauri v2, React, and a Python FastAPI sidecar.
+A secure, modular desktop app using Tauri v2 (Rust), React, and Python.
 
-## Tech Stack
-- **Core:** Tauri v2 (Rust)
-- **Frontend:** React + TypeScript + Vite
-- **Backend:** Python FastAPI (Sidecar pattern)
+## Critical Architecture Rules (Strict Compliance)
 
-## Critical Implementation Details
+### 1. Rust Core (\`src-tauri/src/\`)
+- **Pattern:** Modular split.
+- **\`commands.rs\`**: ALL \`#[tauri::command]\` functions MUST go here.
+- **\`state.rs\`**: ALL shared structs/enums MUST go here.
+- **\`lib.rs\`**: Only for setup and registration. NEVER write business logic here.
 
-### 1. Python Sidecar (FastAPI)
-- **CORS is Mandatory:** Always add \`CORSMiddleware\` allowing \`*\` origins. Tauri's webview is considered a different origin from localhost.
-- **Output Buffering:** Always use \`print("...", flush=True)\`. Without \`flush=True\`, Python buffers output and the Frontend cannot detect when the server is ready.
-- **Entry Point:** The script must use \`if __name__ == "__main__":\` to run \`uvicorn.run()\`.
+### 2. Python Sidecar (\`python-backend/\`)
+- **Pattern:** FastAPI Service Layer.
+- **\`main.py\`**: Setup only (CORSMiddleware, Uvicorn).
+- **\`api/routes.py\`**: Route definitions.
+- **\`core/config.py\`**: Environment variable loading (Port/Token).
+- **Rule:** NEVER hardcode ports (8000). Always use \`settings.PORT\`.
 
-### 2. Tauri v2 Security
-- **Capabilities:** Permissions are NOT in \`tauri.conf.json\`. They are in \`src-tauri/capabilities/\`.
-- **Shell Plugin:** Use \`@tauri-apps/plugin-shell\` for spawning processes.
-- **Spawn vs Execute:** We use \`spawn()\` for long-running servers. Ensure \`shell:allow-spawn\` is granted in capabilities.
+### 3. Frontend (\`src/\`)
+- **Pattern:** Logic/View Separation.
+- **\`hooks/\`**: All side-effects (Process spawning, Event listening) MUST go into custom hooks (e.g., \`useSidecar\`).
+- **\`components/\`**: UI components must be "dumb" (props in, JSX out).
+- **\`App.tsx\`**: Layout only. Connects Hooks to Components.
 
-### 3. Frontend (React)
-- **Readiness Check:** When spawning the sidecar, listen to both \`stdout\` and \`stderr\`. Uvicorn prints startup logs to \`stderr\`.
-- **Port:** The Python backend defaults to port \`8000\`.
+### 4. Security Protocol
+- **Shared Secret:**
+    - Rust generates \`API_SECRET_TOKEN\`.
+    - React fetches it via \`invoke('get_server_config')\`.
+    - React injects it into Python Env.
+    - Python middleware enforces \`Authorization: Bearer <TOKEN>\`.
+
+## File Placement Guide
+- New React Logic -> \`src/hooks/\`
+- New UI Element -> \`src/components/\`
+- New Backend Route -> \`python-backend/api/\`
+- New Tauri Command -> \`src-tauri/src/commands.rs\`

@@ -1,60 +1,44 @@
-# Python Sidecar Development Guide (Tauri v2)
+# Python Sidecar Development Guide
 
-## 1. The Python Server (\`python-backend/main.py\`)
-To work as a sidecar, the FastAPI app requires two specific configurations:
-1. **CORS:** Must allow requests from the Tauri frontend (localhost).
-2. **Output Flushing:** \`print(..., flush=True)\` is required for Tauri to capture logs immediately.
+## 1. The Secure, Dynamic Server
+The backend is a FastAPI application that runs on a **Dynamic Port** assigned by the Tauri host.
 
-### Code Template
+### Key Requirements
+1.  **Dynamic Port:** Must read \`API_PORT\` from environment (default to 8000 only for dev).
+2.  **Shared Secret:** Must read \`API_SECRET_TOKEN\` from environment.
+3.  **CORS:** Must allow \`*\` origin.
+
+### Minimal Code Template
 \`\`\`python
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+import os
 import uvicorn
+from fastapi import FastAPI, Security, HTTPException
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 app = FastAPI()
+security = HTTPBearer()
 
-# 1. Enable CORS for Tauri
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# CONFIGURATION (Injected by Rust/React)
+API_PORT = int(os.getenv("API_PORT", "8000"))
+API_SECRET = os.getenv("API_SECRET_TOKEN", "unsafe-dev-mode")
 
-@app.get("/")
-def read_root():
-    return {"message": "Hello from Sidecar!"}
+def verify_token(creds: HTTPAuthorizationCredentials = Security(security)):
+    if creds.credentials != API_SECRET:
+        raise HTTPException(403, "Invalid Token")
+    return creds.credentials
+
+@app.get("/", dependencies=[Security(verify_token)])
+def root():
+    return {"status": "running", "port": API_PORT}
 
 if __name__ == "__main__":
-    # 2. Flush stdout so Tauri sees it immediately
-    print("Starting Backend...", flush=True)
-    # 3. Run on localhost only
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    # Must use flush=True for Tauri logs
+    print(f"Starting on Port {API_PORT}...", flush=True)
+    uvicorn.run(app, host="127.0.0.1", port=API_PORT)
 \`\`\`
 
-## 2. Build & Bundle Process
-Every time you change Python code, you must rebuild the binary.
-
-### Build Command
+## 2. Build Process
+**Crucial:** You must rebuild the binary every time you change \`main.py\`.
 \`\`\`bash
-cd python-backend
-source venv/bin/activate
-# Create the standalone executable
 pyinstaller --clean --onefile --name api main.py
 \`\`\`
-
-### Bundle Command
-Move the binary to the Tauri bin folder with your architecture suffix.
-*Run \`rustc -Vv | grep host\` to find your suffix.*
-\`\`\`bash
-# Example for Mac M1/M2 (Apple Silicon)
-mv dist/api ../src-tauri/bin/api-aarch64-apple-darwin
-
-# Example for Mac Intel
-# mv dist/api ../src-tauri/bin/api-x86_64-apple-darwin
-\`\`\`
-
-## 3. Tauri Configuration (v2)
-- **Plugin:** \`tauri-plugin-shell\` must be initialized in \`lib.rs\`.
-- **Config:** \`tauri.conf.json\` must list \`"externalBin": ["bin/api"]\`.
-- **Capabilities:** \`src-tauri/capabilities/default.json\` must allow \`shell:allow-spawn\` for \`bin/api\`.
