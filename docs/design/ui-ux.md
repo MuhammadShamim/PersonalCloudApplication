@@ -34,3 +34,19 @@ We use a lightweight, static HTML file as the initial window.
 Managed in \`src-tauri/tauri.conf.json\`.
 - **main:** The React app. Hidden on launch.
 - **splashscreen:** The loader. Shown on launch.
+
+## 3. Splash Screen Technical Implementation
+
+### Why \`public/splashscreen.html\`?
+The splash screen is placed in the \`public/\` directory instead of being a React component for specific performance reasons:
+
+1.  **Bypass the Build Process:** Files in \`public/\` are served raw by the Tauri webview. They do not need to be compiled, bundled, or parsed by Vite.
+2.  **Zero-Dependency Rendering:** React requires the V8 JavaScript engine to load, parse \`bundle.js\`, and "hydrate" the Virtual DOM before a single pixel appears. This takes 200-500ms. A static HTML file renders in <10ms.
+3.  **Fault Tolerance:** If the React application crashes on startup (e.g., a syntax error or bad import), the splash screen remains visible, preventing a "White Screen of Death."
+
+### Lifecycle State Machine
+1.  **State: Launch** -> Rust opens \`splashscreen.html\` (Visible).
+2.  **State: Loading** -> Rust starts React Window (Hidden) + Spawns Python Sidecar.
+3.  **State: Ready** -> Python emits "Startup Complete" signal.
+4.  **State: Transition** -> React invokes \`close_splashscreen\`.
+5.  **State: Active** -> Splash closes, React Window becomes visible.

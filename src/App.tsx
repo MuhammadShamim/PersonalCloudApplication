@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Command } from "@tauri-apps/plugin-shell";
 import { invoke } from "@tauri-apps/api/core";
+import { api } from "./api/client"; // <--- Import the new client
 import "./App.css";
 
 function App() {
@@ -8,11 +9,9 @@ function App() {
   const [logs, setLogs] = useState<string[]>([]);
   const [backendReady, setBackendReady] = useState(false);
   
-  // Ref to prevent double-spawning in React Strict Mode
   const sidecarSpawned = useRef(false);
 
   useEffect(() => {
-    // If we already spawned the sidecar, stop here.
     if (sidecarSpawned.current) return;
     sidecarSpawned.current = true;
 
@@ -20,16 +19,13 @@ function App() {
       try {
         const sidecar = Command.sidecar("bin/api");
         const child = await sidecar.spawn();
-        console.log("Sidecar spawned with PID:", child.pid);
+        console.log("Sidecar spawned PID:", child.pid);
         
-        // Helper to check logs for the "Ready" signal
         const checkReady = (line: string) => {
-          // "Application startup complete" is the standard Uvicorn success message
           if (line.includes("Application startup complete")) {
             setBackendReady(true);
             setMessage("Backend is Ready!");
             
-            // Signal Tauri to close splash screen and show main window
             console.log("Backend ready. Closing splash screen...");
             invoke("close_splashscreen").catch((err) => 
               console.error("Failed to invoke close_splashscreen:", err)
@@ -37,15 +33,13 @@ function App() {
           }
         };
 
-        // Listen to Standard Output
         sidecar.stdout.on("data", (line) => {
           setLogs((prev) => [...prev, `[OUT]: ${line}`]);
           checkReady(line);
         });
 
-        // Listen to Standard Error (Uvicorn prints here by default)
         sidecar.stderr.on("data", (line) => {
-          console.log(`[PY-ERR]: ${line}`); // Log to browser console for debugging
+          console.log(`[PY-ERR]: ${line}`);
           setLogs((prev) => [...prev, `[ERR]: ${line}`]);
           checkReady(line);
         });
@@ -60,13 +54,15 @@ function App() {
     startSidecar();
   }, []);
 
+  // --- NEW: Clean API Call ---
   const pingBackend = async () => {
     try {
-      const response = await fetch("http://127.0.0.1:8000/");
-      const data = await response.json();
+      setMessage("Pinging...");
+      // No more fetch("http://...")! Just a method call.
+      const data = await api.healthCheck();
       setMessage(`Response: ${data.message}`);
     } catch (e) {
-      setMessage(`Error fetching data: ${e}`);
+      setMessage(`Error: ${e}`);
     }
   };
 

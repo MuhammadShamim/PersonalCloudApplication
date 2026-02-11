@@ -76,3 +76,21 @@ sequenceDiagram
 
 ### C. Frontend (`src`)
 - **`App.tsx`**: Orchestrates the startup. It spawns the sidecar, listens for the "Ready" signal, and triggers the window swap.
+
+## 5. Technology Rationale (The "Triple Stack")
+
+Our architecture is "Polyglot," meaning it uses specific languages for specific domains to maximize performance and developer productivity.
+
+### A. Rust (Tauri Core) - The "Body"
+- **Role:** Operating System (OS) Interface & Security.
+- **Why:** Rust is memory-safe and has a tiny footprint. It handles window creation, file system permissions, and spawning the sidecar securely.
+- **Alternative:** Electron (uses Node.js). We rejected Electron because it is heavy (bundles Chrome) and uses 10x more RAM.
+
+### B. React (Frontend) - The "Face"
+- **Role:** User Interface (UI).
+- **Why:** React is the industry standard for interactive UIs. It offers the richest ecosystem of component libraries (charts, grids, animations) that are hard to build in native Rust or Python (Tkinter).
+
+### C. Python (Sidecar) - The "Brain"
+- **Role:** Business Logic & Integrations.
+- **Why:** Python has the world's best libraries for Data Science, AI, and Cloud APIs (Google Drive).
+- **Justification:** Writing complex Google API OAuth logic or image processing in Rust is difficult and slow. In Python, it is effortless. We trade a small amount of startup speed for massive development speed.
