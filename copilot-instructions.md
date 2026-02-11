@@ -8,18 +8,23 @@ A cross-platform desktop app using Tauri v2, React, and a Python FastAPI sidecar
 - **Frontend:** React + TypeScript + Vite
 - **Backend:** Python FastAPI (Sidecar pattern)
 
-## Critical Implementation Details
+## Critical Patterns & Rules
 
-### 1. Python Sidecar (FastAPI)
-- **CORS is Mandatory:** Always add \`CORSMiddleware\` allowing \`*\` origins. Tauri's webview is considered a different origin from localhost.
-- **Output Buffering:** Always use \`print("...", flush=True)\`. Without \`flush=True\`, Python buffers output and the Frontend cannot detect when the server is ready.
-- **Entry Point:** The script must use \`if __name__ == "__main__":\` to run \`uvicorn.run()\`.
+### 1. Splash Screen & Initialization
+- **Pattern:** The app launches with a **static HTML splash screen** (\`public/splashscreen.html\`). The main React window is **hidden** by default.
+- **Rust Command:** Do NOT remove \`close_splashscreen\` from \`lib.rs\`. This command performs the window swap.
+- **Trigger:** The Frontend must call \`invoke("close_splashscreen")\` ONLY after receiving the "Application startup complete" log from the Python sidecar.
 
-### 2. Tauri v2 Security
-- **Capabilities:** Permissions are NOT in \`tauri.conf.json\`. They are in \`src-tauri/capabilities/\`.
-- **Shell Plugin:** Use \`@tauri-apps/plugin-shell\` for spawning processes.
-- **Spawn vs Execute:** We use \`spawn()\` for long-running servers. Ensure \`shell:allow-spawn\` is granted in capabilities.
+### 2. Python Sidecar (FastAPI)
+- **CORS:** Always use \`CORSMiddleware\` allowing \`*\`.
+- **Output:** Always use \`print(..., flush=True)\` to avoid buffering.
+- **Entry Point:** Must use \`if __name__ == "__main__":\` block.
 
-### 3. Frontend (React)
-- **Readiness Check:** When spawning the sidecar, listen to both \`stdout\` and \`stderr\`. Uvicorn prints startup logs to \`stderr\`.
-- **Port:** The Python backend defaults to port \`8000\`.
+### 3. Tauri v2 Security
+- **Capabilities:** Permissions are in \`src-tauri/capabilities/default.json\`.
+- **Shell:** Use \`shell:allow-spawn\` for the sidecar.
+- **IPC:** Use \`@tauri-apps/api/core\` for \`invoke\`.
+
+### 4. File Structure
+- \`src-tauri/src/lib.rs\`: Registers plugins and window commands.
+- \`src/App.tsx\`: Handles Sidecar spawning and Splash screen dismissal.

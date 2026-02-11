@@ -1,17 +1,18 @@
 import { useState, useEffect, useRef } from "react";
 import { Command } from "@tauri-apps/plugin-shell";
+import { invoke } from "@tauri-apps/api/core";
 import "./App.css";
 
 function App() {
-  const [message, setMessage] = useState("Waiting for backend...");
+  const [message, setMessage] = useState("Initializing backend...");
   const [logs, setLogs] = useState<string[]>([]);
   const [backendReady, setBackendReady] = useState(false);
   
-  // Use a ref to ensure we only spawn the sidecar ONCE
+  // Ref to prevent double-spawning in React Strict Mode
   const sidecarSpawned = useRef(false);
 
   useEffect(() => {
-    // If we already spawned it, don't do it again
+    // If we already spawned the sidecar, stop here.
     if (sidecarSpawned.current) return;
     sidecarSpawned.current = true;
 
@@ -21,31 +22,38 @@ function App() {
         const child = await sidecar.spawn();
         console.log("Sidecar spawned with PID:", child.pid);
         
-        // Helper to check lines for success message
+        // Helper to check logs for the "Ready" signal
         const checkReady = (line: string) => {
+          // "Application startup complete" is the standard Uvicorn success message
           if (line.includes("Application startup complete")) {
             setBackendReady(true);
             setMessage("Backend is Ready!");
+            
+            // Signal Tauri to close splash screen and show main window
+            console.log("Backend ready. Closing splash screen...");
+            invoke("close_splashscreen").catch((err) => 
+              console.error("Failed to invoke close_splashscreen:", err)
+            );
           }
         };
 
-        // Listen to stdout
+        // Listen to Standard Output
         sidecar.stdout.on("data", (line) => {
           setLogs((prev) => [...prev, `[OUT]: ${line}`]);
           checkReady(line);
         });
 
-        // Listen to stderr (Uvicorn often prints here by default)
+        // Listen to Standard Error (Uvicorn prints here by default)
         sidecar.stderr.on("data", (line) => {
-          console.log(`[PY-ERR]: ${line}`); 
+          console.log(`[PY-ERR]: ${line}`); // Log to browser console for debugging
           setLogs((prev) => [...prev, `[ERR]: ${line}`]);
-          checkReady(line); // <--- Added this check here!
+          checkReady(line);
         });
 
       } catch (error) {
         console.error("Failed to spawn sidecar:", error);
         setMessage("Failed to start backend.");
-        setLogs((prev) => [...prev, `[ERR-SPAWN]: ${error}`]);
+        setLogs((prev) => [...prev, `[CRITICAL]: ${error}`]);
       }
     };
 
@@ -76,16 +84,7 @@ function App() {
 
       <div className="logs">
         <h3>Backend Logs:</h3>
-        <div style={{ 
-          textAlign: 'left', 
-          background: '#f4f4f4', 
-          padding: '10px', 
-          borderRadius: '5px',
-          fontFamily: 'monospace',
-          maxHeight: '200px',
-          overflowY: 'auto',
-          color: '#333'
-        }}>
+        <div className="log-box">
           {logs.map((log, i) => <div key={i}>{log}</div>)}
         </div>
       </div>
