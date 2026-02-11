@@ -1,58 +1,32 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+/* Add/Update in App.css */
+.status-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 15px;
 }
 
-h1 {
-  margin-bottom: 2rem;
-}
-
-.card {
-  padding: 2em;
-  background: #f9f9f9;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  margin-bottom: 2rem;
-}
-
-button {
-  cursor: pointer;
-  padding: 0.8em 1.5em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #0f0f0f;
-  color: white;
-  border-radius: 8px;
-  border: none;
-  transition: background-color 0.25s;
-}
-
-button:hover {
-  background-color: #333;
-}
-
-button:disabled {
+.indicator-light {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
   background-color: #ccc;
-  cursor: not-allowed;
+  box-shadow: 0 0 5px rgba(0,0,0,0.2);
 }
 
-.logs {
-  text-align: left;
-  margin-top: 20px;
+.indicator-light.green {
+  background-color: #00ff00;
+  box-shadow: 0 0 8px #00ff00;
 }
 
-.log-box {
-  background: #1e1e1e;
-  color: #00ff00; /* Hacker green logs */
-  padding: 15px;
-  border-radius: 5px;
-  font-family: 'Courier New', monospace;
-  font-size: 0.85rem;
-  height: 300px;
-  overflow-y: auto;
-  white-space: pre-wrap; /* Keeps line breaks */
-  word-break: break-all;
+.indicator-light.red {
+  background-color: #ff0000;
+  box-shadow: 0 0 8px #ff0000;
+}
+
+.response-text {
+  min-height: 1.5em; /* Prevents layout jump when empty */
+  font-weight: bold;
+  color: #396cd8;
 }
