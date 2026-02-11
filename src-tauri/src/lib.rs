@@ -1,14 +1,30 @@
 use tauri::Manager;
-use rand::Rng; // You might need to add `rand` to Cargo.toml or use UUID
+use rand::Rng;
+use std::net::TcpListener; // <--- Import this
 
-// 1. Generate a random token in memory (Global State)
-struct AppState {
-    api_token: String,
+// Define the Config Structure
+#[derive(Clone, serde::Serialize)]
+struct ServerConfig {
+    port: u16,
+    token: String,
 }
 
+// Global State to hold the config
+struct AppState {
+    config: ServerConfig,
+}
+
+// Helper to find a free port
+fn get_free_port() -> u16 {
+    // Bind to port 0 lets the OS pick a random free port
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    listener.local_addr().unwrap().port()
+}
+
+// Command for React to get the config
 #[tauri::command]
-fn get_api_token(state: tauri::State<AppState>) -> String {
-    state.api_token.clone()
+fn get_server_config(state: tauri::State<AppState>) -> ServerConfig {
+    state.config.clone()
 }
 
 #[tauri::command]
@@ -23,20 +39,24 @@ async fn close_splashscreen(window: tauri::Window) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // Generate a secure random token
-    let api_token: String = rand::thread_rng()
+    // 1. Generate Security Token
+    let token: String = rand::thread_rng()
         .sample_iter(&rand::distributions::Alphanumeric)
         .take(32)
         .map(char::from)
         .collect();
+
+    // 2. Find a Free Port
+    let port = get_free_port();
     
-    println!("Generated Security Token: {}", api_token);
+    println!("Server Config Created -> Port: {}, Token: {}", port, token);
+
+    let config = ServerConfig { port, token };
 
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
-        // Store token in state
-        .manage(AppState { api_token }) 
-        .invoke_handler(tauri::generate_handler![close_splashscreen, get_api_token])
+        .manage(AppState { config }) // Store it in state
+        .invoke_handler(tauri::generate_handler![close_splashscreen, get_server_config]) // Register new command
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

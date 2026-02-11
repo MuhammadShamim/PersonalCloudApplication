@@ -1,7 +1,15 @@
 // src/api/client.ts
-const BASE_URL = "http://127.0.0.1:8000";
 
 // --- Types ---
+
+// 1. Configuration Type (New)
+// This matches the struct we defined in Rust
+export interface ServerConfig {
+    port: number;
+    token: string;
+}
+
+// 2. Response Types (Preserved)
 export interface BackendResponse<T> {
     data?: T;
     error?: string;
@@ -17,22 +25,31 @@ export interface GoogleAuthURL {
 
 // --- API Client Class ---
 class APIClient {
+    private baseUrl: string = "";
     private token: string = "";
+    private isConfigured: boolean = false;
 
     /**
-     * Set the security token received from Rust.
-     * This must be called before making any requests.
+     * Initialize the client with dynamic config from Rust.
+     * This replaces the old setToken() method and hardcoded URL.
      */
-    public setToken(token: string) {
-        this.token = token;
-        console.log("[API] Security Token Set");
+    public configure(config: ServerConfig) {
+        this.baseUrl = `http://127.0.0.1:${config.port}`;
+        this.token = config.token;
+        this.isConfigured = true;
+        console.log(`[API] Client Configured: ${this.baseUrl} (Token: ${config.token.substring(0,5)}...)`);
     }
 
     /**
      * Generic request handler with Authorization Header
      */
     private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-        const url = `${BASE_URL}${endpoint}`;
+        // Safety Check: Ensure we don't call API before config exists
+        if (!this.isConfigured) {
+            throw new Error("API Client not configured! Call configure() first.");
+        }
+
+        const url = `${this.baseUrl}${endpoint}`;
         
         // 1. Prepare Headers (Inject Authorization)
         const headers = {
