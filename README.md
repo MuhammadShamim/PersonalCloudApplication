@@ -3,31 +3,33 @@
 ![Personal Cloud Application](./public/main-screen.png)
 
 ## 1. Overview
-A cross-platform desktop application for personal file management, built with a "Polyglot" architecture to combine performance, UI quality, and data capabilities.
-
+A secure, cross-platform desktop application for personal file management.
 - **Goal:** Manage files locally and on cloud providers (MVP: Google Drive).
-- **Architecture:** Tauri (Rust) + React (UI) + Python (Logic Sidecar).
+- **Architecture:** Polyglot Stack (Tauri Rust Core + React UI + Python Logic Sidecar).
+- **Security:** Military-grade "Shared Secret" authentication between processes.
 
-## 2. Roadmap & Status
+## 2. Key Features (Current)
+- **Hybrid Architecture:** React Frontend + Python Backend (Sidecar).
+- **Fast Startup:** Native Rust splash screen masks Python initialization.
+- **Secure Communication:** - **Shared Secret Handshake:** Rust generates a random 32-char token at launch.
+    - **Access Control:** Python backend rejects any request without \`Authorization: Bearer <TOKEN>\`.
+    - **Isolation:** Localhost port 8000 is protected from external/malware access.
+
+## 3. Roadmap & Status
 
 ### Phase 1: Foundation (Completed ✅)
 - [x] **Project Skeleton:** Setup Rust, Node, Python environments.
 - [x] **Sidecar Integration:** Bundle Python FastAPI as a subprocess.
-- [x] **Inter-Process Communication:** React talks to Python via localhost.
-- [x] **UX Polish:** Native Splash Screen to hide backend startup time.
-- [x] **Architecture:** Typed API Client (\`src/api/client.ts\`) for type-safe requests.
+- [x] **UX Polish:** Native Splash Screen.
+- [x] **Type Safety:** TypeScript API Client (\`src/api/client.ts\`).
+- [x] **Security:** Token-based authentication (Rust -> React -> Python).
 
 ### Phase 2: Authentication (Next 🚧)
 - [ ] **Google Cloud Setup:** Create project and get Client ID/Secret.
 - [ ] **OAuth Flow:** Python opens system browser for login.
-- [ ] **Token Management:** Securely store Access/Refresh tokens.
-- [ ] **User Profile:** Display user name and avatar in React.
+- [ ] **Token Management:** Securely store Access/Refresh tokens in System Keychain.
 
-### Phase 3: Drive Integration
-- [ ] **List Files:** Fetch file tree from Google Drive API.
-- [ ] **File Operations:** Download/Upload functionality.
-
-## 3. Developer Setup
+## 4. Developer Setup
 
 ### Prerequisites
 - Node.js & npm
@@ -46,12 +48,20 @@ A cross-platform desktop application for personal file management, built with a 
    source venv/bin/activate
    pip install -r requirements.txt
    \`\`\`
+3. **Setup Rust Dependencies:**
+   \`\`\`bash
+   cd src-tauri
+   cargo add rand  # Required for security token generation
+   cd ..
+   \`\`\`
 
 ### Build & Run
 **Important:** You must rebuild the Python binary whenever you change \`main.py\`.
+
 \`\`\`bash
 # 1. Build Sidecar
 cd python-backend
+# (Activate venv first)
 pyinstaller --clean --onefile --name api main.py
 mv dist/api ../src-tauri/bin/api-aarch64-apple-darwin 
 # (Note: Use your specific architecture suffix)
@@ -61,7 +71,6 @@ cd ..
 npm run tauri dev
 \`\`\`
 
-## 4. Key Design Decisions
-- **Why 3 Languages?** Rust for OS security, React for UI, Python for complex API logic.
-- **Why Native Fetch?** We use standard browser fetch + CORS for simplicity and speed.
-- **Why Static Splash?** \`public/splashscreen.html\` loads instantly, masking the 2s Python startup.
+## 5. Security Architecture
+- **Why Shared Secret?** Prevents other processes/malware on the user's machine from hijacking the backend port (8000).
+- **Why Native Fetch?** We use the browser's native \`fetch\` API with CORS, secured by the Bearer token, for maximum performance.
