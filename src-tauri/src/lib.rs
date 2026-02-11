@@ -1,62 +1,48 @@
-use tauri::Manager;
+// 1. Import our new modules
+mod commands;
+mod state;
+
 use rand::Rng;
-use std::net::TcpListener; // <--- Import this
+use std::net::TcpListener;
+use std::sync::Mutex;
 
-// Define the Config Structure
-#[derive(Clone, serde::Serialize)]
-struct ServerConfig {
-    port: u16,
-    token: String,
-}
-
-// Global State to hold the config
-struct AppState {
-    config: ServerConfig,
-}
-
-// Helper to find a free port
+// Helper: Ask OS for a free port (bind to port 0)
 fn get_free_port() -> u16 {
-    // Bind to port 0 lets the OS pick a random free port
-    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
-    listener.local_addr().unwrap().port()
-}
-
-// Command for React to get the config
-#[tauri::command]
-fn get_server_config(state: tauri::State<AppState>) -> ServerConfig {
-    state.config.clone()
-}
-
-#[tauri::command]
-async fn close_splashscreen(window: tauri::Window) {
-  if let Some(splashscreen) = window.get_webview_window("splashscreen") {
-    splashscreen.close().unwrap();
-  }
-  if let Some(main_window) = window.get_webview_window("main") {
-    main_window.show().unwrap();
-  }
+    TcpListener::bind("127.0.0.1:0")
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port()
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // 1. Generate Security Token
+    // 2. Logic: Generate infrastructure config (Port + Token)
     let token: String = rand::thread_rng()
         .sample_iter(&rand::distributions::Alphanumeric)
         .take(32)
         .map(char::from)
         .collect();
-
-    // 2. Find a Free Port
-    let port = get_free_port();
     
+    let port = get_free_port();
+
     println!("Server Config Created -> Port: {}, Token: {}", port, token);
 
-    let config = ServerConfig { port, token };
+    // 3. State: Initialize global state object
+    let config = state::ServerConfig { port, token };
+    let app_state = state::AppState {
+        config: Mutex::new(config),
+    };
 
+    // 4. Builder: Register plugins, state, and commands
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
-        .manage(AppState { config }) // Store it in state
-        .invoke_handler(tauri::generate_handler![close_splashscreen, get_server_config]) // Register new command
+        .manage(app_state) // Store the state
+        .invoke_handler(tauri::generate_handler![
+            // Register our modular commands
+            commands::close_splashscreen,
+            commands::get_server_config
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

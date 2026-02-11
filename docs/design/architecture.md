@@ -1,21 +1,37 @@
+cat <<EOF > docs/design/architecture.md
 # System Architecture
 
 ## 1. High-Level Design
-PersonalCloudApplication follows a **Hybrid Desktop Architecture**.
+PersonalCloudApplication follows a **Polyglot Clean Architecture**.
 - **Core:** Tauri (Rust) manages the application lifecycle, windows, and system security.
 - **UI:** React (TypeScript) runs in a webview to provide the user interface.
 - **Logic:** Python (FastAPI) runs as a **Sidecar** (subprocess) to handle business logic, file operations, and OAuth.
 
-## 2. The Sidecar Pattern
-Instead of compiling Python into the main binary, we bundle it as a standalone executable.
-- **Communication:** The Frontend talks to the Backend via HTTP (REST API) over `localhost`.
-- **Security:** The Sidecar is only accessible from `127.0.0.1`.
-- **Lifecycle:** The Sidecar is spawned by the React app on launch and killed by Tauri when the app closes.
+## 2. Component Structure (Modular Architecture)
+
+### A. Rust Core (\`src-tauri/src/\`)
+We avoid a monolithic \`lib.rs\` by separating concerns:
+- **\`lib.rs\`**: The "Main" entry point. Initializes config, finds free ports, builds the app.
+- **\`commands.rs\`**: Callable functions from the Frontend (e.g., \`get_server_config\`, \`close_splashscreen\`).
+- **\`state.rs\`**: Data structures (Mutex, Config structs) shared across threads.
+
+### B. Python Sidecar (\`python-backend/\`)
+Follows a standard FastAPI Service Layer pattern:
+- **\`main.py\`**: Entry point. Wires middleware and routes.
+- **\`api/\`**: Endpoint definitions (Routes).
+- **\`core/\`**: Configuration (\`config.py\`) and Security (\`security.py\`).
+- **\`services/\`**: Business logic (e.g., Google Drive API wrapper).
+
+### C. Frontend (\`src/\`)
+Separates Application Logic from View:
+- **\`hooks/\`**: Custom hooks (e.g., \`useSidecar.ts\`) containing the startup logic and event listeners.
+- **\`components/\`**: "Dumb" UI elements (e.g., \`Terminal.tsx\`, \`Dashboard.tsx\`).
+- **\`api/\`**: Data Access Layer (\`client.ts\`) handling the Typed API and Auth headers.
 
 ## 3. Initialization Flow (Splash Screen)
-To mask the Python startup time (approx. 1-2s), we use a multi-window strategy.
+To mask the Python startup time (approx. 1-2s), we use a multi-window strategy combined with a dynamic configuration handshake.
 
-### Startup Sequence Diagram`
+### Startup Sequence Diagram
 ```mermaid
 sequenceDiagram
     actor User
@@ -27,15 +43,28 @@ sequenceDiagram
     User->>Rust: Launch App
     
     rect rgb(240, 240, 240)
-        note right of Rust: Initialization Phase
+        note right of Rust: Phase 1: Native Init
+        Rust->>Rust: Find Free Port (e.g. 54321)
+        Rust->>Rust: Generate Token (e.g. "SecretKey")
         Rust->>Splash: Create & Show Window (splashscreen.html)
         Rust->>React: Create Hidden Window (App.tsx)
     end
     
     Note over Splash: Spinner Animation...
 
-    React->>Rust: Command.sidecar("bin/api").spawn()
-    Rust->>Python: Start Subprocess
+    rect rgb(255, 250, 240)
+        note right of React: Phase 2: Configuration
+        React->>Rust: invoke("get_server_config")
+        Rust-->>React: { port: 54321, token: "SecretKey" }
+        React->>React: api.configure(port, token)
+    end
+
+    rect rgb(240, 240, 255)
+        note right of React: Phase 3: Sidecar Spawn
+        React->>Rust: Command.sidecar("bin/api")
+        Note over React: Envs: API_PORT=54321, API_SECRET_TOKEN=...
+        Rust->>Python: Start Subprocess
+    end
     
     loop Output Monitoring
         Python-->>React: [stderr] "INFO: Started server process"
@@ -45,69 +74,45 @@ sequenceDiagram
     React->>React: Detect "startup complete" log
     
     rect rgb(220, 255, 220)
-        note right of React: Handover Phase
+        note right of React: Phase 4: Handover
         React->>Rust: invoke("close_splashscreen")
         Rust->>Splash: Close Window
         Rust->>React: Show Main Window
     end
     
     User->>React: See App Interface
-    
-    rect rgb(240, 240, 255)
-        note right of React: Runtime Phase
-        User->>React: Click "Ping Backend"
-        React->>Python: HTTP GET http://127.0.0.1:8000/
-        Python-->>React: JSON {"message": "Hello"}
-    end
 ```
 
-## 4. Key Components
-
-### A. Tauri Core (`src-tauri`)
-- **`lib.rs`**: Registers the `shell` plugin and the `close_splashscreen` command.
-- **`capabilities/default.json`**: Grants permission to spawn the `bin/api` sidecar.
-- **`tauri.conf.json`**: Configures the two windows (`main` hidden, `splashscreen` visible).
-
-### B. Python Sidecar (`python-backend`)
-- **`main.py`**: The FastAPI entry point.
-- **Requirements:**
-    - Must use `CORSMiddleware` to allow requests from the Tauri origin.
-    - Must use `print(..., flush=True)` to ensure logs reach React instantly.
-
-### C. Frontend (`src`)
-- **`App.tsx`**: Orchestrates the startup. It spawns the sidecar, listens for the "Ready" signal, and triggers the window swap.
-
-## 5. Technology Rationale (The "Triple Stack")
+## 4. Technology Rationale (The "Triple Stack")
 
 Our architecture is "Polyglot," meaning it uses specific languages for specific domains to maximize performance and developer productivity.
 
 ### A. Rust (Tauri Core) - The "Body"
 - **Role:** Operating System (OS) Interface & Security.
 - **Why:** Rust is memory-safe and has a tiny footprint. It handles window creation, file system permissions, and spawning the sidecar securely.
-- **Alternative:** Electron (uses Node.js). We rejected Electron because it is heavy (bundles Chrome) and uses 10x more RAM.
 
 ### B. React (Frontend) - The "Face"
 - **Role:** User Interface (UI).
-- **Why:** React is the industry standard for interactive UIs. It offers the richest ecosystem of component libraries (charts, grids, animations) that are hard to build in native Rust or Python (Tkinter).
+- **Why:** React is the industry standard for interactive UIs. It offers the richest ecosystem of component libraries (charts, grids, animations).
 
 ### C. Python (Sidecar) - The "Brain"
 - **Role:** Business Logic & Integrations.
 - **Why:** Python has the world's best libraries for Data Science, AI, and Cloud APIs (Google Drive).
-- **Justification:** Writing complex Google API OAuth logic or image processing in Rust is difficult and slow. In Python, it is effortless. We trade a small amount of startup speed for massive development speed.
+- **Justification:** Writing complex Google API OAuth logic or image processing in Rust is difficult. In Python, it is effortless.
 
-## 6. Security Architecture (The "Secure Handshake")
+## 5. Security Architecture (The "Secure Handshake")
 
 To prevent unauthorized access to the local backend (e.g., from malicious browser extensions or malware), we implement a **Shared Secret Authentication** protocol.
 
 ### The Problem
-By default, \`localhost:8000\` is open to any process on the machine. A malicious script could theoretically send commands to delete files if it guessed the port.
+By default, \`localhost\` ports are open to any process on the machine. A malicious script could theoretically send commands to delete files if it guessed the port.
 
 ### The Solution: Ephemeral Bearer Tokens
 We use a "Defense in Depth" strategy where the Rust Core acts as the Source of Truth for security.
 
 ### Protocol Flow
 1.  **Generation:** On app launch, Rust generates a cryptographically secure random 32-char string (\`API_SECRET_TOKEN\`).
-2.  **Injection:** React asks Rust for this token via \`invoke('get_api_token')\`.
+2.  **Injection:** React asks Rust for this token via \`invoke('get_server_config')\`.
 3.  **Spawn:** React spawns the Python Sidecar, passing the token as a **private environment variable**.
 4.  **Enforcement:** Python's FastAPI middleware rejects *any* request that does not include the header \`Authorization: Bearer <TOKEN>\`.
 
@@ -121,8 +126,8 @@ sequenceDiagram
     Note over Rust: App Launch
     Rust->>Rust: Generate Random Token (e.g. "aB3...")
     
-    React->>Rust: invoke("get_api_token")
-    Rust-->>React: Returns "aB3..."
+    React->>Rust: invoke("get_server_config")
+    Rust-->>React: { token: "aB3...", port: ... }
     
     React->>React: Store Token in Memory (APIClient)
     
@@ -143,7 +148,7 @@ sequenceDiagram
     Python-->>React: 403 Forbidden
 ```
 
-## 7. Dynamic Infrastructure (Port & Security)
+## 6. Dynamic Infrastructure (Port & Security)
 
 To ensure reliability across different environments, the application uses **Dynamic Port Allocation** instead of hardcoded ports.
 
@@ -169,27 +174,3 @@ Rust (Tauri Core) is responsible for defining the infrastructure configuration a
     - React spawns the Python Sidecar using \`Command.sidecar\`.
     - Injects Environment Variables: \`API_PORT=54321\` and \`API_SECRET_TOKEN=xyz...\`.
     - Python starts Uvicorn on the specified port.
-
-### Sequence Diagram
-```mermaid
-sequenceDiagram
-    participant Rust as Tauri Core
-    participant React as Frontend
-    participant Python as Sidecar
-
-    Note over Rust: App Launch
-    Rust->>Rust: Find Free Port (e.g. 54321)
-    Rust->>Rust: Generate Token (e.g. "SecretKey")
-    
-    React->>Rust: invoke("get_server_config")
-    Rust-->>React: { port: 54321, token: "SecretKey" }
-    
-    React->>React: api.configure(port, token)
-    
-    React->>Python: Spawn Process (env: API_PORT=54321, API_SECRET_TOKEN=...)
-    
-    Python->>Python: Uvicorn.run(port=54321)
-    
-    React->>Python: GET http://127.0.0.1:54321/ (Auth: Bearer SecretKey)
-    Python-->>React: 200 OK
-```
