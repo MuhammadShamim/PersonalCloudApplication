@@ -1,5 +1,7 @@
 # PersonalCloudApplication
+Splash Screen
 ![Splash Screen](./public/splash-screen.png)
+Main Window
 ![Personal Cloud Application](./public/main-screen.png)
 
 ## 1. Overview
