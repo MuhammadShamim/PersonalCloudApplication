@@ -3,34 +3,29 @@
 ## Project Overview
 A secure, military-grade desktop app using Tauri v2 (Rust), React, and Python.
 
-## Critical Security Rules (DO NOT BREAK)
-1.  **Shared Secret Auth:**
-    - Rust MUST generate a random \`api_token\` at runtime.
-    - Python MUST enforce \`Authorization: Bearer <token>\` on ALL sensitive endpoints.
-    - React MUST fetch the token from Rust and inject it into the API Client.
-2.  **Environment Variables:**
-    - The token is passed to Python via the \`env\` parameter in \`Command.sidecar\`.
-    - NEVER hardcode tokens in source code.
+## Critical Architecture Rules (DO NOT BREAK)
 
-## Tech Stack Guidelines
+### 1. Dynamic Infrastructure (Strict Rule)
+- **Ports:** NEVER hardcode port 8000 in production logic.
+- **Source of Truth:** Rust (\`src-tauri/src/lib.rs\`) determines the Port and Token.
+- **Data Flow:** Rust -> React -> Python (via Env Vars).
 
-### 1. Tauri Core (Rust)
-- **File:** \`src-tauri/src/lib.rs\`
-- **Responsibilities:**
-    - Generate \`api_token\` (using \`rand\` crate).
-    - Expose \`get_api_token\` command.
-    - Manage Splash Screen lifecycle.
+### 2. Security Handshake
+- **Shared Secret:**
+    - Rust generates \`API_SECRET_TOKEN\`.
+    - Python rejects requests without \`Authorization: Bearer <TOKEN>\`.
+    - React must call \`api.configure(config)\` before making requests.
 
-### 2. Frontend (React)
+### 3. Frontend (React)
 - **File:** \`src/api/client.ts\`
-- **Responsibilities:**
-    - Store the token in a private variable.
-    - Attach \`Authorization\` header to native \`fetch\` calls.
-    - Use **Native Fetch** (not Tauri HTTP plugin).
+- **Rule:** Do NOT use hardcoded URLs (\`localhost:8000\`). Use \`this.baseUrl\` derived from the config.
+- **Rule:** Use **Native Fetch** (not Tauri HTTP plugin).
 
-### 3. Backend (Python)
+### 4. Backend (Python)
 - **File:** \`python-backend/main.py\`
-- **Responsibilities:**
-    - Use \`fastapi.security.HTTPBearer\`.
-    - Validate token against \`os.getenv("API_SECRET_TOKEN")\`.
-    - Enable CORS for localhost.
+- **Rule:** Must accept \`API_PORT\` and \`API_SECRET_TOKEN\` from \`os.environ\`.
+- **Rule:** Always use \`print(..., flush=True)\`.
+
+## File Structure
+- \`src-tauri/src/lib.rs\`: Logic for \`get_server_config\` and \`get_free_port\`.
+- \`src/App.tsx\`: Orchestrator (Get Config -> Configure Client -> Spawn Sidecar).

@@ -142,4 +142,54 @@ sequenceDiagram
     React->>Python: GET /files (No Header)
     Python-->>React: 403 Forbidden
 ```
-EOF
+
+## 7. Dynamic Infrastructure (Port & Security)
+
+To ensure reliability across different environments, the application uses **Dynamic Port Allocation** instead of hardcoded ports.
+
+### The Problem
+- Hardcoding \`localhost:8000\` fails if the port is already in use by another application.
+- Managing secrets and ports separately in 3 languages is error-prone.
+
+### The Solution: Rust as "Source of Truth"
+Rust (Tauri Core) is responsible for defining the infrastructure configuration at runtime.
+
+### Orchestration Flow
+1.  **Rust Startup:**
+    - Binds to Port 0 (OS assigns a random free port, e.g., \`54321\`).
+    - Generates a random 32-char \`API_SECRET_TOKEN\`.
+    - Stores \`{ port, token }\` in the global AppState.
+
+2.  **Frontend Config:**
+    - React invokes \`get_server_config\`.
+    - Rust returns the JSON object: \`{ "port": 54321, "token": "xyz..." }\`.
+    - React configures the API Client with the base URL \`http://127.0.0.1:54321\`.
+
+3.  **Backend Config:**
+    - React spawns the Python Sidecar using \`Command.sidecar\`.
+    - Injects Environment Variables: \`API_PORT=54321\` and \`API_SECRET_TOKEN=xyz...\`.
+    - Python starts Uvicorn on the specified port.
+
+### Sequence Diagram
+```mermaid
+sequenceDiagram
+    participant Rust as Tauri Core
+    participant React as Frontend
+    participant Python as Sidecar
+
+    Note over Rust: App Launch
+    Rust->>Rust: Find Free Port (e.g. 54321)
+    Rust->>Rust: Generate Token (e.g. "SecretKey")
+    
+    React->>Rust: invoke("get_server_config")
+    Rust-->>React: { port: 54321, token: "SecretKey" }
+    
+    React->>React: api.configure(port, token)
+    
+    React->>Python: Spawn Process (env: API_PORT=54321, API_SECRET_TOKEN=...)
+    
+    Python->>Python: Uvicorn.run(port=54321)
+    
+    React->>Python: GET http://127.0.0.1:54321/ (Auth: Bearer SecretKey)
+    Python-->>React: 200 OK
+```

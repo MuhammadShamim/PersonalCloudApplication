@@ -50,3 +50,25 @@ The splash screen is placed in the \`public/\` directory instead of being a Reac
 3.  **State: Ready** -> Python emits "Startup Complete" signal.
 4.  **State: Transition** -> React invokes \`close_splashscreen\`.
 5.  **State: Active** -> Splash closes, React Window becomes visible.
+
+## 4. Application Lifecycle (Revised)
+
+The application follows a strict initialization sequence to ensure security and dynamic configuration.
+
+### Phase 1: Native (Rust)
+1.  **Launch:** OS starts the Tauri process.
+2.  **Resource Allocation:** Rust finds a free TCP port (e.g., 54321) and generates a security token.
+3.  **UI:** Rust shows \`splashscreen.html\` (Visible) and loads \`main\` window (Hidden).
+
+### Phase 2: Handshake (React <-> Rust)
+1.  **React Init:** The \`App\` component mounts.
+2.  **Config Fetch:** React invokes \`get_server_config\`.
+3.  **Client Setup:** React configures the API Client with \`http://127.0.0.1:54321\` and the Token.
+
+### Phase 3: Sidecar Spawn (React -> Python)
+1.  **Spawn:** React calls \`Command.sidecar\`, injecting \`API_PORT\` and \`API_SECRET_TOKEN\`.
+2.  **Wait:** React listens to stdout for "Application startup complete".
+
+### Phase 4: Ready
+1.  **Transition:** React invokes \`close_splashscreen\`.
+2.  **Active:** Main window becomes visible; Splash screen closes.

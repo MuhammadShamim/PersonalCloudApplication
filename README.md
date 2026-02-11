@@ -6,14 +6,16 @@
 A secure, cross-platform desktop application for personal file management.
 - **Goal:** Manage files locally and on cloud providers (MVP: Google Drive).
 - **Architecture:** Polyglot Stack (Tauri Rust Core + React UI + Python Logic Sidecar).
-- **Security:** Military-grade "Shared Secret" authentication between processes.
+- **Security:** Military-grade "Shared Secret" authentication.
+- **Reliability:** Dynamic Port Allocation (No "Address in use" errors).
 
-## 2. Key Features (Current)
+## 2. Key Features
 - **Hybrid Architecture:** React Frontend + Python Backend (Sidecar).
-- **Fast Startup:** Native Rust splash screen masks Python initialization.
-- **Secure Communication:** - **Shared Secret Handshake:** Rust generates a random 32-char token at launch.
+- **Zero-Config Startup:** Rust automatically finds a free port (e.g., 54321) so the app never crashes due to port conflicts.
+- **Secure Handshake:**
+    - **Shared Secret:** Rust generates a random 32-char token at launch.
     - **Access Control:** Python backend rejects any request without \`Authorization: Bearer <TOKEN>\`.
-    - **Isolation:** Localhost port 8000 is protected from external/malware access.
+    - **Isolation:** Localhost is protected from external/malware access.
 
 ## 3. Roadmap & Status
 
@@ -22,12 +24,13 @@ A secure, cross-platform desktop application for personal file management.
 - [x] **Sidecar Integration:** Bundle Python FastAPI as a subprocess.
 - [x] **UX Polish:** Native Splash Screen.
 - [x] **Type Safety:** TypeScript API Client (\`src/api/client.ts\`).
-- [x] **Security:** Token-based authentication (Rust -> React -> Python).
+- [x] **Security:** Token-based authentication.
+- [x] **Infrastructure:** Dynamic Port Allocation & Configuration Injection.
 
 ### Phase 2: Authentication (Next 🚧)
 - [ ] **Google Cloud Setup:** Create project and get Client ID/Secret.
 - [ ] **OAuth Flow:** Python opens system browser for login.
-- [ ] **Token Management:** Securely store Access/Refresh tokens in System Keychain.
+- [ ] **Token Management:** Securely store Access/Refresh tokens.
 
 ## 4. Developer Setup
 
@@ -51,7 +54,7 @@ A secure, cross-platform desktop application for personal file management.
 3. **Setup Rust Dependencies:**
    \`\`\`bash
    cd src-tauri
-   cargo add rand  # Required for security token generation
+   cargo add rand  # For token generation
    cd ..
    \`\`\`
 
@@ -72,5 +75,5 @@ npm run tauri dev
 \`\`\`
 
 ## 5. Security Architecture
-- **Why Shared Secret?** Prevents other processes/malware on the user's machine from hijacking the backend port (8000).
-- **Why Native Fetch?** We use the browser's native \`fetch\` API with CORS, secured by the Bearer token, for maximum performance.
+- **Why Dynamic Ports?** Hardcoded ports (8000) cause crashes if other apps use them. We let the OS assign a free port.
+- **Why Shared Secret?** Prevents other processes on the user's machine from hijacking the backend.
