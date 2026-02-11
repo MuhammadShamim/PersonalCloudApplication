@@ -3,35 +3,65 @@
 ![Personal Cloud Application](./public/main-screen.png)
 
 ## 1. Overview
-A cross-platform desktop application for personal file management.
-- **Goal:** Manage files locally and on cloud providers (MVP: Google Drive).
-- **Current Status:** Phase 1 Complete (App Shell + Python Sidecar + Splash Screen).
+A cross-platform desktop application for personal file management, built with a "Polyglot" architecture to combine performance, UI quality, and data capabilities.
 
-## 2. Key Features
-- **Hybrid Architecture:** React Frontend + Python Backend (Sidecar).
-- **Fast Startup:** Native Rust splash screen while Python backend initializes.
-- **Security:** Tauri v2 Capabilities model.
+- **Goal:** Manage files locally and on cloud providers (MVP: Google Drive).
+- **Architecture:** Tauri (Rust) + React (UI) + Python (Logic Sidecar).
+
+## 2. Roadmap & Status
+
+### Phase 1: Foundation (Completed ✅)
+- [x] **Project Skeleton:** Setup Rust, Node, Python environments.
+- [x] **Sidecar Integration:** Bundle Python FastAPI as a subprocess.
+- [x] **Inter-Process Communication:** React talks to Python via localhost.
+- [x] **UX Polish:** Native Splash Screen to hide backend startup time.
+- [x] **Architecture:** Typed API Client (\`src/api/client.ts\`) for type-safe requests.
+
+### Phase 2: Authentication (Next 🚧)
+- [ ] **Google Cloud Setup:** Create project and get Client ID/Secret.
+- [ ] **OAuth Flow:** Python opens system browser for login.
+- [ ] **Token Management:** Securely store Access/Refresh tokens.
+- [ ] **User Profile:** Display user name and avatar in React.
+
+### Phase 3: Drive Integration
+- [ ] **List Files:** Fetch file tree from Google Drive API.
+- [ ] **File Operations:** Download/Upload functionality.
 
 ## 3. Developer Setup
 
 ### Prerequisites
-- Node.js, Rust, Python 3.10+
-- \`npm install\`
-- \`pip install -r python-backend/requirements.txt\`
+- Node.js & npm
+- Rust (Cargo)
+- Python 3.10+
 
-### Build & Run
-1. **Build Python Sidecar:**
+### Installation
+1. **Install Frontend Dependencies:**
+   \`\`\`bash
+   npm install
+   \`\`\`
+2. **Setup Backend:**
    \`\`\`bash
    cd python-backend
+   python3 -m venv venv
    source venv/bin/activate
-   pyinstaller --clean --onefile --name api main.py
-   mv dist/api ../src-tauri/bin/api-aarch64-apple-darwin
-   \`\`\`
-2. **Run App:**
-   \`\`\`bash
-   npm run tauri dev
+   pip install -r requirements.txt
    \`\`\`
 
-## 4. Architecture Notes
-- **Sidecar:** Python runs as a subprocess. Rebuild binary after changing Python code.
-- **Splash Screen:** The main window is hidden until Python reports it is ready.
+### Build & Run
+**Important:** You must rebuild the Python binary whenever you change \`main.py\`.
+\`\`\`bash
+# 1. Build Sidecar
+cd python-backend
+pyinstaller --clean --onefile --name api main.py
+mv dist/api ../src-tauri/bin/api-aarch64-apple-darwin 
+# (Note: Use your specific architecture suffix)
+
+# 2. Run App
+cd ..
+npm run tauri dev
+\`\`\`
+
+## 4. Key Design Decisions
+- **Why 3 Languages?** Rust for OS security, React for UI, Python for complex API logic.
+- **Why Native Fetch?** We use standard browser fetch + CORS for simplicity and speed.
+- **Why Static Splash?** \`public/splashscreen.html\` loads instantly, masking the 2s Python startup.
