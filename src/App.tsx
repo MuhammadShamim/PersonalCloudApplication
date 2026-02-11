@@ -1,17 +1,16 @@
 import { useState } from "react";
 import { useSidecar } from "./hooks/useSidecar";
 import { api } from "./api/client";
-import "./App.css";
+import { Terminal } from "./components/Terminal"; // Import Component
+import "./App.css"; // Import Global Styles
 
 function App() {
-  // Use our new Hook!
   const { message, logs, isReady } = useSidecar();
   const [status, setStatus] = useState("");
 
   const handlePing = async () => {
     try {
       const res = await api.healthCheck();
-      // Correctly accessing the new fields from the Modular Python Backend
       setStatus(`${res.system} is ${res.status} on Port ${res.port}`);
     } catch (e) {
       setStatus(`Error: ${e}`);
@@ -24,7 +23,7 @@ function App() {
       
       <div className="card">
         <div className="status-indicator">
-          <p>System Status: <strong>{message}</strong></p>
+          <span>System Status: <strong>{message}</strong></span>
           <div className={`indicator-light ${isReady ? "green" : "red"}`}></div>
         </div>
         
@@ -35,11 +34,9 @@ function App() {
         </button>
       </div>
 
+      {/* The logs wrapper controls the width */}
       <div className="logs">
-        <h3>System Logs:</h3>
-        <div className="log-box">
-          {logs.map((log, i) => <div key={i}>{log}</div>)}
-        </div>
+        <Terminal logs={logs} />
       </div>
     </div>
   );

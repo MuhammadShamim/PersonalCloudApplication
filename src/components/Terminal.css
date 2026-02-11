@@ -1,11 +1,11 @@
-cat <<EOF > src/components/Terminal.css
 .terminal-container {
   background-color: #1e1e1e;
   border-radius: 8px;
   padding: 15px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
   margin-top: 20px;
-  font-family: 'Fira Code', monospace;
+  border: 1px solid #333;
+  width: 100%; /* Force full width of parent */
   text-align: left;
 }
 
@@ -16,36 +16,22 @@ cat <<EOF > src/components/Terminal.css
   border-bottom: 1px solid #333;
   padding-bottom: 8px;
   margin-bottom: 10px;
+  font-family: monospace;
 }
 
 .terminal-window {
   height: 200px;
   overflow-y: auto;
   color: #00ff00;
+  font-family: 'Courier New', Courier, monospace;
   font-size: 0.85rem;
   line-height: 1.4;
+  background-color: #000;
+  padding: 10px;
+  border-radius: 4px;
 }
 
 .terminal-line {
   white-space: pre-wrap; /* Wrap long lines */
   word-break: break-all;
 }
-
-/* Custom Scrollbar for Terminal look */
-.terminal-window::-webkit-scrollbar {
-  width: 8px;
-}
-
-.terminal-window::-webkit-scrollbar-track {
-  background: #2a2a2a;
-}
-
-.terminal-window::-webkit-scrollbar-thumb {
-  background: #555;
-  border-radius: 4px;
-}
-
-.terminal-window::-webkit-scrollbar-thumb:hover {
-  background: #777;
-}
-EOF
