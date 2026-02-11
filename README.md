@@ -98,3 +98,9 @@ npm run tauri dev
 ## 6. Security Architecture
 - **Why Dynamic Ports?** Hardcoded ports (8000) cause crashes if other apps use them. We let the OS assign a free port.
 - **Why Shared Secret?** Prevents other processes on the user's machine from hijacking the backend port.
+
+## 7. Testing
+We maintain a high standard of code quality. For detailed instructions on running the test suites, please refer to [docs/testing.md](docs/testing.md).
+
+- **Backend:** \`pytest\` (Security & Logic)
+- **Core:** \`cargo test\` (Infrastructure & Config)

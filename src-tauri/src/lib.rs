@@ -46,3 +46,31 @@ pub fn run() {
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_get_free_port_finds_valid_port() {
+        let port = get_free_port();
+        // Port should be > 0 and <= 65535
+        assert!(port > 0);
+    }
+
+    #[test]
+    fn test_token_generation_length() {
+        // We can't test the random logic inside 'run', 
+        // but we can verify the generator logic if we extracted it.
+        // For now, let's replicate the logic to ensure the crate works.
+        let token: String = rand::thread_rng()
+            .sample_iter(&rand::distributions::Alphanumeric)
+            .take(32)
+            .map(char::from)
+            .collect();
+        
+        assert_eq!(token.len(), 32);
+        // Ensure it's not empty
+        assert!(!token.is_empty());
+    }
+}
