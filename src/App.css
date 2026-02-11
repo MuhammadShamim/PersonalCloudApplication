@@ -1,32 +1,132 @@
-/* Add/Update in App.css */
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #242424;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  place-items: center;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+#root {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+/* --- Layout Container --- */
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+  margin-bottom: 0.5rem;
+}
+
+/* --- Dashboard Card --- */
+.card {
+  padding: 2em;
+  background-color: #1a1a1a;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  border: 1px solid #333;
+  width: 100%;
+  max-width: 500px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* --- Status Indicator --- */
 .status-indicator {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  margin-bottom: 15px;
+  gap: 12px;
+  margin-bottom: 20px;
+  font-size: 1.1em;
+  color: #fff;
 }
 
 .indicator-light {
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
-  background-color: #ccc;
-  box-shadow: 0 0 5px rgba(0,0,0,0.2);
+  background-color: #555;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 5px rgba(0,0,0,0.5);
 }
 
 .indicator-light.green {
   background-color: #00ff00;
-  box-shadow: 0 0 8px #00ff00;
+  box-shadow: 0 0 12px #00ff00;
 }
 
 .indicator-light.red {
-  background-color: #ff0000;
-  box-shadow: 0 0 8px #ff0000;
+  background-color: #ff4444;
+  box-shadow: 0 0 12px #ff4444;
 }
 
 .response-text {
-  min-height: 1.5em; /* Prevents layout jump when empty */
-  font-weight: bold;
-  color: #396cd8;
+  min-height: 1.5em;
+  font-weight: 600;
+  color: #646cff;
+  margin-bottom: 1.5em;
+}
+
+/* --- Button Styling --- */
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: #1a1a1a;
+  cursor: pointer;
+  transition: border-color 0.25s;
+}
+
+button:hover {
+  border-color: #646cff;
+}
+
+button:focus,
+button:focus-visible {
+  outline: 4px auto -webkit-focus-ring-color;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  border-color: #333;
+}
+
+/* --- Logs Section Wrapper --- */
+.logs {
+  width: 100%;
+  max-width: 800px;
+  text-align: left;
 }
