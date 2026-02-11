@@ -1,4 +1,4 @@
-# PersonalCloudApplication
+# Personal Cloud Application
 Splash Screen
 ![Splash Screen](./public/splash-screen.png)
 Main Window
@@ -12,10 +12,10 @@ A secure, cross-platform desktop application for personal file management.
 
 ## 2. Key Features (Current)
 - **Hybrid Architecture:** React Frontend + Python Backend (Sidecar).
-- **Zero-Config Startup:** Rust automatically finds a free port (e.g., \`54321\`) so the app never crashes due to port conflicts.
+- **Zero-Config Startup:** Rust automatically finds a free port (e.g., `54321`) so the app never crashes due to port conflicts.
 - **Secure Handshake:**
     - **Shared Secret:** Rust generates a random 32-char token at launch.
-    - **Access Control:** Python backend rejects any request without \`Authorization: Bearer <TOKEN>\`.
+    - **Access Control:** Python backend rejects any request without `Authorization: Bearer <TOKEN>`.
     - **Isolation:** Localhost is protected from external/malware access.
 - **Modular Codebase:**
     - **Rust:** Split into State, Commands, and Lib.
@@ -24,20 +24,20 @@ A secure, cross-platform desktop application for personal file management.
 
 ## 3. Project Structure
 
-### Rust Core (\`src-tauri/src/\`)
-- \`lib.rs\`: Entry point & orchestration.
-- \`commands.rs\`: Callable functions exposed to Frontend.
-- \`state.rs\`: Shared data structures.
+### Rust Core (`src-tauri/src/`)
+- `lib.rs`: Entry point & orchestration.
+- `commands.rs`: Callable functions exposed to Frontend.
+- `state.rs`: Shared data structures.
 
-### Python Sidecar (\`python-backend/\`)
-- \`main.py\`: Entry point.
-- \`api/\`: API Route definitions.
-- \`core/\`: Configuration & Security logic.
+### Python Sidecar (`python-backend/`)
+- `main.py`: Entry point.
+- `api/`: API Route definitions.
+- `core/`: Configuration & Security logic.
 
-### Frontend (\`src/\`)
-- \`hooks/\`: Application logic (e.g., \`useSidecar.ts\`).
-- \`components/\`: Visual elements (e.g., \`Terminal.tsx\`).
-- \`api/\`: Typed API Client.
+### Frontend (`src/`)
+- `hooks/`: Application logic (e.g., `useSidecar.ts`).
+- `components/`: Visual elements (e.g., `Terminal.tsx`).
+- `api/`: Typed API Client.
 
 ## 4. Roadmap & Status
 
@@ -47,6 +47,7 @@ A secure, cross-platform desktop application for personal file management.
 - [x] **UX Polish:** Native Splash Screen & Real-time Logs.
 - [x] **Security:** Token-based authentication & Dynamic Ports.
 - [x] **Refactor:** Modular Clean Architecture applied to all 3 languages.
+- [x] **Quality Assurance:** Automated Testing Suite (Unit + Integration + Component).
 
 ### Phase 2: Authentication (Next 🚧)
 - [ ] **Google Cloud Setup:** Create project and get Client ID/Secret.
@@ -99,8 +100,9 @@ npm run tauri dev
 - **Why Dynamic Ports?** Hardcoded ports (8000) cause crashes if other apps use them. We let the OS assign a free port.
 - **Why Shared Secret?** Prevents other processes on the user's machine from hijacking the backend port.
 
-## 7. Testing
-We maintain a high standard of code quality. For detailed instructions on running the test suites, please refer to [docs/testing.md](./docs/qa/testing.md).
+## 7. Testing Strategy
+We maintain a high standard of code quality. For detailed instructions on running the test suites, please refer to [docs/testing.md](docs/testing.md).
 
-- **Backend:** \`pytest\` (Security & Logic)
-- **Core:** \`cargo test\` (Infrastructure & Config)
+- **Frontend:** `npm run test` (Vitest - Components & UI Logic)
+- **Backend:** `pytest` (Security & API Logic)
+- **Core:** `cargo test` (Infrastructure & Config)
