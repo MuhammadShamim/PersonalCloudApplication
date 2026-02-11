@@ -73,3 +73,27 @@ cargo test
 ### General: "Connection Refused"
 - **Cause:** The tests try to bind to a port that is already in use.
 - **Fix:** Our \`get_free_port\` logic handles this dynamically, but if you hardcode ports in tests, ensure they are free.
+
+## 5. Frontend Testing (React)
+**Location:** \`src/components/*.test.tsx\`
+
+We use **Vitest** + **React Testing Library** to verify UI components in isolation.
+
+### Prerequisites
+\`\`\`bash
+npm install
+\`\`\`
+
+### Running Tests
+\`\`\`bash
+npm run test
+\`\`\`
+
+### What We Test
+1.  **Rendering:** Do components appear with the correct text?
+2.  **Props:** If we pass data (e.g., logs), is it displayed?
+3.  **State:** (Future) Does clicking a button trigger the correct function?
+
+### Example: Terminal Component
+- **Input:** \`logs=["Error 1", "Info 2"]\`
+- **Expectation:** The text "Error 1" and "Info 2" must be found in the document.
