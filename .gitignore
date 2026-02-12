@@ -39,3 +39,4 @@ build/
 
 # MacOS specific files
 .DS_Store
+python-backend/client_secret.json
