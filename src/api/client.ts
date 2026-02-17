@@ -2,27 +2,33 @@
 
 // --- Types ---
 
-// 1. Configuration Type (New)
-// This matches the struct we defined in Rust
+// 1. Configuration Type (Matches Rust)
 export interface ServerConfig {
     port: number;
     token: string;
 }
 
-// 2. Response Types (Preserved)
-export interface BackendResponse<T> {
-    data?: T;
-    error?: string;
-}
-
+// 2. Response Types
 export interface HealthCheck {
     status: string;
     system: string;
     port: number;
 }
 
-export interface GoogleAuthURL {
-    url: string;
+export interface AuthResponse {
+    status: string;
+    scopes?: string[];
+    error?: string;
+}
+
+export interface DriveFile {
+    id: string;
+    name: string;
+    mimeType: string;
+}
+
+export interface FileListResponse {
+    files: DriveFile[];
 }
 
 // --- API Client Class ---
@@ -33,13 +39,12 @@ class APIClient {
 
     /**
      * Initialize the client with dynamic config from Rust.
-     * This replaces the old setToken() method and hardcoded URL.
      */
     public configure(config: ServerConfig) {
         this.baseUrl = `http://127.0.0.1:${config.port}`;
         this.token = config.token;
         this.isConfigured = true;
-        console.log(`[API] Client Configured: ${this.baseUrl} (Token: ${config.token.substring(0,5)}...)`);
+        console.log(`[API] Client Configured: ${this.baseUrl} (Token: ${config.token.substring(0, 5)}...)`);
     }
 
     /**
@@ -52,23 +57,22 @@ class APIClient {
         }
 
         const url = `${this.baseUrl}${endpoint}`;
-        
+
         // 1. Prepare Headers (Inject Authorization)
         const headers = {
             ...options.headers,
             "Authorization": `Bearer ${this.token}`,
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
         };
 
         try {
             console.log(`[API] Requesting: ${url}`);
-            
-            // 2. Execute Request
+
+            // 2. Execute Request (Using Native Browser Fetch)
             const response = await fetch(url, { ...options, headers });
 
             // 3. Handle Errors
             if (!response.ok) {
-                // If 403, our token was rejected
                 if (response.status === 403) {
                     console.error("[CRITICAL] Security Token Rejected by Backend!");
                 }
@@ -90,8 +94,16 @@ class APIClient {
         return this.request<HealthCheck>("/");
     }
 
-    public async getGoogleAuthUrl(): Promise<GoogleAuthURL> {
-        return this.request<GoogleAuthURL>("/login");
+    // New: Triggers the Python backend to open the system browser
+    public async loginGoogle(): Promise<AuthResponse> {
+        return this.request<AuthResponse>("/auth/login", { 
+            method: "POST" 
+        });
+    }
+
+    // New: Fetches files after successful login
+    public async listFiles(): Promise<FileListResponse> {
+        return this.request<FileListResponse>("/auth/files");
     }
 }
 

@@ -39,3 +39,7 @@ build/
 
 # MacOS specific files
 .DS_Store
+python-backend/client_secret.json
+src-tauri/client_secret.json
+src-tauri/token.json
+src-tauri/client_secret.json
