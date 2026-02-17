@@ -1,77 +1,90 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { listen } from "@tauri-apps/api/event"; // <--- Import Listener
 import { useSidecar } from "./hooks/useSidecar";
-import { api } from "./api/client";
+import { api, DriveFile } from "./api/client";
 import { Terminal } from "./components/Terminal";
-import { GoogleLogin } from "./components/GoogleLogin"; // <--- Import
+import { GoogleLogin } from "./components/GoogleLogin";
+import { FileExplorer } from "./components/FileExplorer";
 import "./App.css";
 
 function App() {
   const { message, logs, isReady } = useSidecar();
-  const [status, setStatus] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [files, setFiles] = useState<any[]>([]);
-
-  const handlePing = async () => {
-    try {
-      const res = await api.healthCheck();
-      setStatus(`${res.system} is ${res.status} on Port ${res.port}`);
-    } catch (e) {
-      setStatus(`Error: ${e}`);
-    }
-  };
+  const [files, setFiles] = useState<DriveFile[]>([]);
+  const [loadingFiles, setLoadingFiles] = useState(false);
+  const [showLogs, setShowLogs] = useState(false);
 
   const loadFiles = async () => {
+    setLoadingFiles(true);
     try {
       const data = await api.listFiles();
       setFiles(data.files || []);
     } catch (e) {
       console.error(e);
+    } finally {
+      setLoadingFiles(false);
     }
   };
 
+  // --- Listen for Native Menu Events ---
+  useEffect(() => {
+    // Listen for "menu-event" emitted from Rust
+    const unlisten = listen<string>("menu-event", (event) => {
+      console.log("Native Menu Event:", event.payload);
+      
+      switch (event.payload) {
+        case "toggle_logs":
+          setShowLogs(prev => !prev);
+          break;
+        case "refresh":
+          if (isAuthenticated) loadFiles();
+          break;
+      }
+    });
+
+    return () => {
+      unlisten.then(f => f());
+    };
+  }, [isAuthenticated]); // Re-bind if auth state changes
+
   return (
     <div className="container">
-      <h1>Personal Cloud</h1>
+      {/* NO <MenuBar /> HERE anymore! */}
       
-      <div className="card">
-        <div className="status-indicator">
-          <span>System Status: <strong>{message}</strong></span>
-          <div className={`indicator-light ${isReady ? "green" : "red"}`}></div>
+      {!isAuthenticated ? (
+        <div className="card">
+          <h1>Personal Cloud</h1>
+          <div className="status-indicator">
+            <span>Status: {message}</span>
+            <div className={`indicator-light ${isReady ? "green" : "red"}`}></div>
+          </div>
+          {isReady && (
+            <GoogleLogin onLoginSuccess={() => {
+              setIsAuthenticated(true);
+              loadFiles();
+            }} />
+          )}
         </div>
-        
-        {/* Only show controls when system is ready */}
-        {isReady && (
-          <>
-            {!isAuthenticated ? (
-              <GoogleLogin onLoginSuccess={() => {
-                setIsAuthenticated(true);
-                loadFiles();
-              }} />
-            ) : (
-              <div>
-                <h3 style={{color: "#4caf50"}}>✓ Authenticated with Google</h3>
-                <button onClick={loadFiles}>Refresh Files</button>
-                <ul style={{textAlign: 'left'}}>
-                  {files.map(f => (
-                    <li key={f.id}>{f.name}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
+      ) : (
+        <FileExplorer 
+          files={files} 
+          loading={loadingFiles} 
+          onRefresh={loadFiles} 
+        />
+      )}
 
-            <div style={{marginTop: "20px", borderTop: "1px solid #333", paddingTop: "10px"}}>
-               <p className="response-text">{status}</p>
-               <button onClick={handlePing} className="secondary">
-                 Test Connection
-               </button>
+      {/* Logs Modal */}
+      {showLogs && (
+        <div className="logs-modal-overlay" onClick={() => setShowLogs(false)}>
+          <div className="logs-modal" onClick={e => e.stopPropagation()}>
+            <div className="logs-header">
+              <h3>System Logs</h3>
+              <button onClick={() => setShowLogs(false)}>Close</button>
             </div>
-          </>
-        )}
-      </div>
-
-      <div className="logs">
-        <Terminal logs={logs} />
-      </div>
+            <Terminal logs={logs} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

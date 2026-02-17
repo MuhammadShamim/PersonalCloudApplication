@@ -25,6 +25,10 @@ export interface DriveFile {
     id: string;
     name: string;
     mimeType: string;
+    size?: string;         // Google sends this as a string
+    iconLink?: string;     // URL to the file type icon
+    thumbnailLink?: string; // URL to a preview image
+    createdTime?: string;
 }
 
 export interface FileListResponse {
@@ -94,16 +98,57 @@ class APIClient {
         return this.request<HealthCheck>("/");
     }
 
-    // New: Triggers the Python backend to open the system browser
+    // Triggers the Python backend to open the system browser
     public async loginGoogle(): Promise<AuthResponse> {
         return this.request<AuthResponse>("/auth/login", { 
             method: "POST" 
         });
     }
 
-    // New: Fetches files after successful login
+    // Fetches files after successful login
     public async listFiles(): Promise<FileListResponse> {
         return this.request<FileListResponse>("/auth/files");
+    }
+
+    // --- NEW: Download File Method ---
+    // Returns a Blob (Binary Data) instead of JSON
+    public async downloadFile(fileId: string): Promise<Blob> {
+        if (!this.isConfigured) {
+            throw new Error("API Client not configured! Call configure() first.");
+        }
+
+        const url = `${this.baseUrl}/auth/download/${fileId}`;
+        
+        // Note: We do NOT set "Content-Type: application/json" here
+        const headers = {
+            "Authorization": `Bearer ${this.token}`
+        };
+
+        console.log(`[API] Downloading Stream: ${url}`);
+        
+        const response = await fetch(url, { 
+            method: "GET", 
+            headers 
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Download Failed (HTTP ${response.status}): ${errorText}`);
+        }
+
+        // Return the binary blob directly
+        return await response.blob();
+    }
+
+    public async getDownloadStatus(fileId: string): Promise<{ progress: number }> {
+        return this.request<{ progress: number }>(`/auth/download-status/${fileId}`);
+    }
+
+    public async uploadFile(filePath: string): Promise<{ file_id: string }> {
+        return this.request<{ file_id: string }>("/auth/upload", {
+            method: "POST",
+            body: JSON.stringify({ file_path: filePath })
+        });
     }
 }
 
