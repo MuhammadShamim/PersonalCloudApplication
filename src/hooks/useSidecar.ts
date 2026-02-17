@@ -4,29 +4,28 @@ import { invoke } from "@tauri-apps/api/core";
 import { api, ServerConfig } from "../api/client";
 
 export function useSidecar() {
-  const [message, setMessage] = useState("Initializing System...");
+  const [message, setMessage] = useState("Initializing...");
   const [logs, setLogs] = useState<string[]>([]);
   const [isReady, setIsReady] = useState(false);
-  
-  // Prevent double-spawn in React Strict Mode
-  const hasSpawned = useRef(false);
+  const hasRun = useRef(false);
 
   useEffect(() => {
-    if (hasSpawned.current) return;
-    hasSpawned.current = true;
+    if (hasRun.current) return;
+    hasRun.current = true;
 
-    const bootstrap = async () => {
+    // --- SAFETY TIMEOUT: Force Open after 5 seconds ---
+    setTimeout(() => {
+      console.warn("Force closing splash screen due to timeout...");
+      invoke("close_splashscreen").catch(() => {});
+    }, 5000);
+
+    const startSystem = async () => {
       try {
-        // 1. Get Dynamic Config from Rust
-        // Rust determines the free port and the security token
+        setMessage("1. Requesting Config...");
         const config = await invoke<ServerConfig>("get_server_config");
-        console.log("Received Config:", config);
-        
-        // 2. Configure API Client
         api.configure(config);
-        
-        // 3. Spawn Python Sidecar
-        // Pass the Port and Token as Environment Variables
+
+        setMessage("2. Spawning Sidecar...");
         const sidecar = Command.sidecar("bin/api", [], {
           env: { 
             API_PORT: config.port.toString(),
@@ -34,42 +33,40 @@ export function useSidecar() {
           }
         });
 
-        const child = await sidecar.spawn();
-        setLogs(prev => [...prev, `[SYS] Sidecar PID: ${child.pid} | Port: ${config.port}`]);
-
-        // 4. Listen to Logs
-        sidecar.stdout.on("data", (line) => {
-          setLogs(prev => [...prev, `[OUT] ${line}`]);
-          checkReady(line);
+        sidecar.stdout.on("data", line => {
+          console.log(`[PY] ${line}`);
+          setLogs(p => [...p, `[INFO] ${line}`]);
         });
 
-        sidecar.stderr.on("data", (line) => {
-          setLogs(prev => [...prev, `[ERR] ${line}`]);
-          checkReady(line);
+        sidecar.stderr.on("data", line => {
+          console.error(`[PY-ERR] ${line}`);
+          setLogs(p => [...p, `[ERR] ${line}`]); // <--- THIS IS WHAT WE NEED TO SEE
         });
 
-      } catch (err) {
-        setMessage("Initialization Failed");
-        setLogs(prev => [...prev, `[CRITICAL] ${err}`]);
-        console.error(err);
+        await sidecar.spawn();
+
+        setMessage("3. Waiting for Health Check...");
+        const interval = setInterval(async () => {
+          try {
+            await api.healthCheck();
+            clearInterval(interval);
+            setMessage("System Online");
+            setIsReady(true);
+            invoke("close_splashscreen").catch(() => {});
+          } catch (e) {
+            // Keep waiting...
+          }
+        }, 1000);
+
+      } catch (err: any) {
+        setMessage("CRITICAL FAILURE");
+        setLogs(p => [...p, `[FATAL] ${err}`]);
+        invoke("close_splashscreen").catch(() => {});
       }
     };
 
-    bootstrap();
+    startSystem();
   }, []);
-
-  // Helper to detect "Ready" state from logs
-  const checkReady = (line: string) => {
-    if (line.includes("Application startup complete")) {
-      setIsReady(true);
-      setMessage("System Online");
-      
-      // Signal Tauri to swap the Splash Screen for the Main Window
-      setTimeout(() => {
-        invoke("close_splashscreen").catch(console.error);
-      }, 500);
-    }
-  };
 
   return { message, logs, isReady };
 }
