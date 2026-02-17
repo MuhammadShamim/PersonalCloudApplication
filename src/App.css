@@ -130,3 +130,68 @@ button:disabled {
   max-width: 800px;
   text-align: left;
 }
+
+/* --- Logs Modal Overlay --- */
+.logs-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.7); /* Dim background */
+  z-index: 2000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.logs-modal {
+  width: 80%;
+  max-width: 800px;
+  background-color: #1e1e1e;
+  border: 1px solid #444;
+  border-radius: 8px;
+  box-shadow: 0 10px 40px rgba(0,0,0,1);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.logs-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 15px;
+  background-color: #252525;
+  border-bottom: 1px solid #333;
+}
+
+.logs-header h3 {
+  margin: 0;
+  color: #fff;
+  font-size: 1rem;
+}
+
+.logs-header button {
+  padding: 4px 12px;
+  font-size: 0.8rem;
+  background: #333;
+  border: 1px solid #555;
+  color: #fff;
+  border-radius: 4px;
+}
+
+.logs-header button:hover {
+  background: #444;
+}
+
+/* Override Terminal container to fit modal */
+.logs-modal .terminal-container {
+  margin-top: 0;
+  border: none;
+  border-radius: 0;
+}
+
+.logs-modal .terminal-window {
+  height: 400px; /* Taller window for modal */
+}

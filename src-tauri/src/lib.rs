@@ -1,12 +1,14 @@
-// 1. Import our new modules
+// 1. Import modules
 mod commands;
 mod state;
+mod menu; // <--- Ensure this is here
 
 use rand::Rng;
 use std::net::TcpListener;
 use std::sync::Mutex;
+use tauri::Manager; // This will now be used by the setup block below
 
-// Helper: Ask OS for a free port (bind to port 0)
+// Helper: Ask OS for a free port
 fn get_free_port() -> u16 {
     TcpListener::bind("127.0.0.1:0")
         .unwrap()
@@ -17,7 +19,7 @@ fn get_free_port() -> u16 {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // 2. Logic: Generate infrastructure config (Port + Token)
+    // 2. Logic: Generate infrastructure config
     let token: String = rand::thread_rng()
         .sample_iter(&rand::distributions::Alphanumeric)
         .take(32)
@@ -34,12 +36,31 @@ pub fn run() {
         config: Mutex::new(config),
     };
 
-    // 4. Builder: Register plugins, state, and commands
+    // 4. Builder
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
-        .manage(app_state) // Store the state
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_opener::init())
+        .manage(app_state)
+        
+        // --- THIS IS THE MISSING PART ---
+        .setup(|app| {
+            // A. Initialize the Native Menu
+            let handle = app.handle();
+            let app_menu = menu::init(handle)?;
+            app.set_menu(app_menu)?; // <--- This uses 'Manager'
+
+            // B. Listen for Menu Events
+            app.on_menu_event(move |app_handle, event| {
+                menu::handle_event(app_handle, event.id().as_ref());
+            });
+
+            Ok(())
+        })
+        // --------------------------------
+
         .invoke_handler(tauri::generate_handler![
-            // Register our modular commands
             commands::close_splashscreen,
             commands::get_server_config
         ])
@@ -54,23 +75,17 @@ mod tests {
     #[test]
     fn test_get_free_port_finds_valid_port() {
         let port = get_free_port();
-        // Port should be > 0 and <= 65535
         assert!(port > 0);
     }
 
     #[test]
     fn test_token_generation_length() {
-        // We can't test the random logic inside 'run', 
-        // but we can verify the generator logic if we extracted it.
-        // For now, let's replicate the logic to ensure the crate works.
         let token: String = rand::thread_rng()
             .sample_iter(&rand::distributions::Alphanumeric)
             .take(32)
             .map(char::from)
             .collect();
-        
         assert_eq!(token.len(), 32);
-        // Ensure it's not empty
         assert!(!token.is_empty());
     }
 }
